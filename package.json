@@ -4,9 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/app.ts",
-    "clean": "rimraf dist",
-    "build": "npm run clean && tsc",
+    "dev": "ts-node-dev src/app.ts",
+    "build": "tsc",
     "start": "node dist/app.js",
     "start:prod": "NODE_ENV=production node dist/app.js"
   },
