@@ -15,7 +15,13 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
-app.use(morgan("dev"));
+const isProduction = process.env.NODE_ENV === "production";
+
+if (isProduction) {
+  app.use(morgan("combined"));
+} else {
+  app.use(morgan("dev"));
+}
 
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
