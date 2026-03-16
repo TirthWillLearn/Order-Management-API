@@ -33,7 +33,84 @@ const limiter = rateLimit({
 app.use(limiter);
 
 app.get("/", (req, res) => {
-  res.send("API is Running");
+  res.json({
+    service: "Order Management API",
+    version: "1.0.0",
+    status: "running",
+    environment: process.env.NODE_ENV || "development",
+
+    description:
+      "Backend API for a multi-vendor order management system with authentication, product management, and order processing",
+
+    author: {
+      name: "Tirth Patel",
+      linkedin: "https://www.linkedin.com/in/tirth-k-patel",
+      github: "https://github.com/TirthWillLearn",
+    },
+
+    auth: {
+      register: {
+        method: "POST",
+        path: "/auth/register",
+        description: "Register a new user (role: buyer or seller)",
+      },
+      login: {
+        method: "POST",
+        path: "/auth/login",
+        description: "Login and receive JWT token",
+      },
+    },
+
+    products: {
+      list: {
+        method: "GET",
+        path: "/products",
+        access: "Public",
+        query: ["minPrice", "maxPrice", "sellerId", "page", "limit"],
+      },
+      create: {
+        method: "POST",
+        path: "/products",
+        access: "Seller only",
+      },
+      update: {
+        method: "PATCH",
+        path: "/products/:id",
+        access: "Seller only",
+      },
+    },
+
+    orders: {
+      create: {
+        method: "POST",
+        path: "/orders",
+        access: "Authenticated buyer",
+        description: "Create order with transaction and stock validation",
+      },
+      list: {
+        method: "GET",
+        path: "/orders",
+        access: "Authenticated user",
+        query: ["status", "page", "limit"],
+      },
+      details: {
+        method: "GET",
+        path: "/orders/:id",
+        access: "Authenticated user",
+      },
+      updateStatus: {
+        method: "PATCH",
+        path: "/orders/:id/status",
+        access: "Seller or buyer depending on action",
+      },
+    },
+
+    meta: {
+      health: "/health",
+      repository: "https://github.com/TirthWillLearn/Order-Management-API",
+      documentation: "See README.md on GitHub",
+    },
+  });
 });
 
 app.get("/protected", authenticate, (req, res) => {
