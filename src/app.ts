@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 
+import helmet from "helmet";
 import { pool } from "./config/db";
 import authRoutes from "./routes/authRoutes";
 import productRoutes from "./routes/product.routes";
@@ -15,6 +16,7 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
+app.use(helmet());
 const isProduction = process.env.NODE_ENV === "production";
 
 if (isProduction) {
