@@ -144,8 +144,13 @@ export const updateOrderStatus = async (
   userId: number,
   userRole: string,
 ) => {
-  const allowedStatuses = ["pending", "confirmed", "shipped", "cancelled"];
-
+  const allowedStatuses = [
+    "pending",
+    "confirmed",
+    "shipped",
+    "delivered",
+    "cancelled",
+  ];
   if (!allowedStatuses.includes(newStatus)) {
     throw new AppError("Invalid order status", 400);
   }
@@ -205,8 +210,13 @@ export const getOrders = async (
 ) => {
   const offset = (page - 1) * limit;
 
-  const allowedStatuses = ["pending", "confirmed", "shipped", "cancelled"];
-
+  const allowedStatuses = [
+    "pending",
+    "confirmed",
+    "shipped",
+    "delivered",
+    "cancelled",
+  ];
   if (status && !allowedStatuses.includes(status)) {
     throw new AppError("Invalid order status filter", 400);
   }
