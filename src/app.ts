@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
+import { Request, Response } from "express";
 
 import helmet from "helmet";
 import { pool } from "./config/db";
@@ -32,7 +33,7 @@ const limiter = rateLimit({
 
 app.use(limiter);
 
-app.get("/", (req, res) => {
+app.get("/", (req: Request, res: Response) => {
   res.json({
     service: "Order Management API",
     version: "1.0.0",
