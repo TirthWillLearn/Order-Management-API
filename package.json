@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "ts-node-dev src/app.ts",
     "build": "tsc",
