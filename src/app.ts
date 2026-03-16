@@ -36,6 +36,25 @@ app.use("/auth", authRoutes);
 app.use("/products", productRoutes);
 app.use("/orders", orderRoutes);
 
+app.get("/health", async (req, res) => {
+  try {
+    // Check database connectivity
+    await pool.query("SELECT 1");
+
+    res.status(200).json({
+      status: "ok",
+      database: "connected",
+    });
+  } catch (error) {
+    console.error("Health check DB error:", error);
+
+    res.status(500).json({
+      status: "error",
+      database: "disconnected",
+    });
+  }
+});
+
 /* 404 handler */
 app.use((req, res) => {
   res.status(404).json({
@@ -47,10 +66,24 @@ app.use((req, res) => {
 /* global error handler */
 app.use(errorHandler);
 
-pool
-  .connect()
-  .then(() => console.log("PostgreSQL connected"))
-  .catch((err: Error) => console.error("DB connection error", err));
+app.get("/health", async (req, res) => {
+  try {
+    // Check database connectivity
+    await pool.query("SELECT 1");
+
+    res.status(200).json({
+      status: "ok",
+      database: "connected",
+    });
+  } catch (error) {
+    console.error("Health check DB error:", error);
+
+    res.status(500).json({
+      status: "error",
+      database: "disconnected",
+    });
+  }
+});
 
 const PORT = process.env.PORT || 4243;
 
