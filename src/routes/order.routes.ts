@@ -10,8 +10,8 @@ import {
 const router = Router();
 
 router.post("/", authenticate, createOrder);
-router.patch("/:id/status", authenticate, changeOrderStatus);
-router.get("/my-orders", authenticate, getMyOrders);
 router.get("/", authenticate, listOrders);
+router.get("/my-orders", authenticate, getMyOrders);
+router.patch("/:id/status", authenticate, changeOrderStatus);
 
 export default router;
