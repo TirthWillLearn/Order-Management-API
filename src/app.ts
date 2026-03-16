@@ -42,6 +42,11 @@ app.get("/", (req, res) => {
     description:
       "Backend API for a multi-vendor order management system with authentication, product management, and order processing",
 
+    server: {
+      uptime: process.uptime(),
+      timestamp: new Date(),
+    },
+
     author: {
       name: "Tirth Patel",
       linkedin: "https://www.linkedin.com/in/tirth-k-patel",
