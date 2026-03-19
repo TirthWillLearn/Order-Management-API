@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import express from "express";
 import dotenv from "dotenv";
 import morgan from "morgan";
@@ -15,6 +16,13 @@ import { errorHandler } from "./middlewares/error.middleware";
 dotenv.config();
 
 const app = express();
+
+Sentry.init({
+  dsn: process.env.SENTRY_DSN,
+  environment: process.env.NODE_ENV || "development",
+  tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+  integrations: [Sentry.expressIntegration()],
+});
 
 app.use(express.json());
 app.use(helmet());
@@ -153,6 +161,9 @@ app.use((req, res) => {
     message: "Route not found",
   });
 });
+
+/* Sentry error handler — must be before global errorHandler */
+Sentry.setupExpressErrorHandler(app);
 
 /* global error handler */
 app.use(errorHandler);

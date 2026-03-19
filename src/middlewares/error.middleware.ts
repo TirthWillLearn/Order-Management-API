@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/node";
 import { Request, Response, NextFunction } from "express";
 import { AppError } from "../utils/AppError";
 
@@ -14,6 +15,7 @@ export const errorHandler = (
     });
   }
 
+  Sentry.captureException(err);
   console.error(err);
 
   return res.status(500).json({
