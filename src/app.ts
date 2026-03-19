@@ -168,27 +168,11 @@ Sentry.setupExpressErrorHandler(app);
 /* global error handler */
 app.use(errorHandler);
 
-app.get("/health", async (req, res) => {
-  try {
-    // Check database connectivity
-    await pool.query("SELECT 1");
+export default app;
 
-    res.status(200).json({
-      status: "ok",
-      database: "connected",
-    });
-  } catch (error) {
-    console.error("Health check DB error:", error);
-
-    res.status(500).json({
-      status: "error",
-      database: "disconnected",
-    });
-  }
-});
-
-const PORT = process.env.PORT || 4243;
-
-app.listen(PORT, () => {
-  console.log(`Server running on ${PORT}`);
-});
+if (require.main === module) {
+  const PORT = process.env.PORT || 4243;
+  app.listen(PORT, () => {
+    console.log(`Server running on ${PORT}`);
+  });
+}
