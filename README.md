@@ -10,9 +10,8 @@
 ![JWT](https://img.shields.io/badge/Auth-JWT-000000?style=flat-square&logo=jsonwebtokens&logoColor=white)
 ![Render](https://img.shields.io/badge/Deployed-Render-46E3B7?style=flat-square&logo=render&logoColor=white)
 
-**A production-style backend API for a multi-vendor order management system.**  
-Buyers browse and order products. Sellers manage inventory and fulfil orders.  
-Built with a focus on transactional integrity, concurrency safety, and scalable query design.
+**A backend system designed to handle multi-user order placement with a focus on data consistency, concurrency control, and transactional integrity.**  
+Buyers can place orders while sellers manage inventory, with safeguards in place to prevent race conditions and ensure stock accuracy under concurrent requests.  
 
 [Live API](https://order-management-api-ruqo.onrender.com) · [Docker Hub](https://hub.docker.com/r/itstirthpatel02/order-management-api) · [GitHub](https://github.com/TirthWillLearn/Order-Management-API)
 
@@ -23,7 +22,9 @@ Built with a focus on transactional integrity, concurrency safety, and scalable 
 ## Table of Contents
 
 - [Overview](#overview)
+- [Key Engineering Highlights](#key-engineering-highlights)
 - [Features](#features)
+- [Architecture](#architecture)
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
@@ -33,6 +34,7 @@ Built with a focus on transactional integrity, concurrency safety, and scalable 
 - [Key Engineering Decisions](#key-engineering-decisions)
 - [Concurrency Handling](#concurrency-handling)
 - [Security](#security)
+- [Limitations & Future Improvements](#limitations--future-improvements)
 - [Deployment](#deployment)
 - [Author](#author)
 
@@ -44,42 +46,35 @@ This API simulates the backend of a multi-vendor marketplace. It handles product
 
 The core engineering challenge: **two buyers attempting to purchase the last available unit simultaneously**. This is solved using PostgreSQL transactions combined with row-level locking (`SELECT FOR UPDATE`), ensuring only one order succeeds and stock never goes negative.
 
+Designed to handle real-world edge cases like concurrent purchases of limited stock, ensuring data consistency under concurrent load.
+
+---
+
+## Key Engineering Highlights
+
+- Prevents overselling using PostgreSQL transactions and row-level locking (`SELECT FOR UPDATE`)
+- Ensures atomic order creation across multiple tables (`orders`, `order_items`, `products`)
+- Handles concurrent users safely with database-level consistency guarantees
+- Optimized queries using JOINs, indexing, and pagination (avoids N+1 problems)
+
 ---
 
 ## Features
 
-### Authentication & Access Control
+- JWT-based authentication and role-based access control (buyer/seller)
+- Transaction-safe order creation with stock validation
+- Concurrency handling using PostgreSQL row-level locking (`SELECT FOR UPDATE`)
+- Product and inventory management for multi-vendor workflows
+- Optimized queries using JOINs, pagination, and indexing
+- Rate limiting and request validation for API reliability
 
-- JWT-based authentication (register, login, protected routes)
-- Role-based access control — `buyer` and `seller` roles enforced via middleware
-- Passwords hashed using bcrypt
+---
 
-### Product Management
+## Architecture
 
-- Sellers can create and manage their own products
-- Stock tracked per product and updated atomically on every order
+High-level system design showing API flow and transaction handling.
 
-### Order Management
-
-- Buyers place orders containing multiple items in a single request
-- Atomic order processing — inserts to `orders`, `order_items`, and stock updates happen inside a single transaction
-- Order lifecycle: `pending → confirmed → shipped → delivered` or `cancelled`
-- Role-enforced status transitions — sellers confirm and ship, buyers cancel (only when pending)
-
-### Query Design
-
-- JOINs used throughout to avoid N+1 query problems
-- Dynamic SQL with pagination (`LIMIT` / `OFFSET`), filtering, and sorting
-- Database indexes on foreign keys and frequently filtered columns
-
-### Reliability & Architecture
-
-- Layered architecture: Routes → Controllers → Services → Database
-- Global error handler using custom `AppError` class
-- `asyncHandler` wrapper eliminates repetitive try/catch in controllers
-- Request validation with `express-validator`
-- Rate limiting (100 requests per 15 minutes)
-- Morgan request logging with environment-based format
+![Architecture](./docs/architecture.png)
 
 ---
 
@@ -95,7 +90,7 @@ The core engineering challenge: **two buyers attempting to purchase the last ava
 | Validation       | express-validator |
 | Logging          | Morgan            |
 | Containerization | Docker            |
-| Cloud Database   | AWS RDS           |
+| Cloud Database   | AWS RDS / Render DB |
 | Hosting          | Render            |
 
 ---
@@ -104,29 +99,14 @@ The core engineering challenge: **two buyers attempting to purchase the last ava
 
 ```
 src/
-├── app.ts                  # App entry point, middleware registration
+├── app.ts
 ├── config/
-│   └── db.ts               # PostgreSQL connection pool
+│   └── db.ts
 ├── controllers/
-│   ├── auth.controller.ts
-│   ├── product.controller.ts
-│   └── order.controller.ts
 ├── services/
-│   ├── auth.service.ts
-│   ├── product.service.ts
-│   └── order.service.ts    # Core transaction logic lives here
 ├── routes/
-│   ├── auth.routes.ts
-│   ├── product.routes.ts
-│   └── order.routes.ts
 ├── middlewares/
-│   ├── auth.middleware.ts   # JWT verification
-│   ├── role.middleware.ts   # Buyer/seller access control
-│   ├── validate.middleware.ts
-│   └── error.middleware.ts  # Global error handler
 └── utils/
-    ├── AppError.ts          # Custom error class with status codes
-    └── asyncHandler.ts      # Wraps async controllers
 ```
 
 ---
@@ -139,99 +119,23 @@ src/
 - PostgreSQL 15+
 - npm
 
-### 1. Clone the repository
+### Setup
 
 ```bash
 git clone https://github.com/TirthWillLearn/Order-Management-API.git
 cd Order-Management-API
-```
-
-### 2. Install dependencies
-
-```bash
 npm install
-```
-
-### 3. Configure environment variables
-
-```bash
 cp .env.example .env
-```
-
-Fill in your database credentials and JWT secret (see [Environment Variables](#environment-variables)).
-
-### 4. Create database tables
-
-Run the following SQL against your PostgreSQL database:
-
-```sql
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('buyer', 'seller')),
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE products (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(150) NOT NULL,
-    description TEXT,
-    price NUMERIC(10,2) NOT NULL,
-    stock INT NOT NULL,
-    seller_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE orders (
-    id SERIAL PRIMARY KEY,
-    buyer_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    total_amount NUMERIC(12,2) NOT NULL,
-    status VARCHAR(20) DEFAULT 'pending',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE order_items (
-    id SERIAL PRIMARY KEY,
-    order_id INT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-    product_id INT NOT NULL REFERENCES products(id),
-    quantity INT NOT NULL,
-    price_at_time NUMERIC(10,2) NOT NULL
-);
-
--- Indexes
-CREATE INDEX idx_products_seller   ON products(seller_id);
-CREATE INDEX idx_orders_buyer      ON orders(buyer_id);
-CREATE INDEX idx_orders_status     ON orders(status);
-CREATE INDEX idx_order_items_order ON order_items(order_id);
-CREATE INDEX idx_order_items_product ON order_items(product_id);
-```
-
-### 5. Start the development server
-
-```bash
 npm run dev
 ```
-
-Server runs at `http://localhost:10000`
 
 ---
 
 ## Docker
 
-### Build and run locally
-
 ```bash
 docker build -t order-api .
 docker run --env-file .env -p 10000:10000 order-api
-```
-
-### Pull from Docker Hub
-
-```bash
-docker pull itstirthpatel02/order-management-api
-docker run --env-file .env -p 10000:10000 itstirthpatel02/order-management-api
 ```
 
 ---
@@ -240,181 +144,85 @@ docker run --env-file .env -p 10000:10000 itstirthpatel02/order-management-api
 
 ```ini
 PORT=10000
-
 DB_HOST=your_db_host
 DB_PORT=5432
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 DB_NAME=order_management
-
 JWT_SECRET=your_jwt_secret
 NODE_ENV=development
 ```
-
-> Never commit your `.env` file. Use `.env.example` as a reference template.
 
 ---
 
 ## API Reference
 
-### Authentication
-
-| Method | Endpoint         | Access | Description                 |
-| ------ | ---------------- | ------ | --------------------------- |
-| POST   | `/auth/register` | Public | Register as buyer or seller |
-| POST   | `/auth/login`    | Public | Login and receive JWT       |
+### Auth
+- POST `/auth/register`
+- POST `/auth/login`
 
 ### Products
-
-| Method | Endpoint    | Access      | Description                            |
-| ------ | ----------- | ----------- | -------------------------------------- |
-| GET    | `/products` | Public      | List products (pagination + filtering) |
-| POST   | `/products` | Seller only | Create a new product                   |
+- GET `/products`
+- POST `/products` (seller)
 
 ### Orders
-
-| Method | Endpoint             | Access     | Description                    |
-| ------ | -------------------- | ---------- | ------------------------------ |
-| POST   | `/orders`            | Buyer only | Place an order (transactional) |
-| GET    | `/orders`            | Auth       | List orders                    |
-| GET    | `/orders/:id`        | Auth       | Get order with items           |
-| PATCH  | `/orders/:id/status` | Auth       | Update order status            |
-
----
-
-### Example: Register
-
-**POST** `/auth/register`
-
-```json
-{
-  "name": "Tirth Patel",
-  "email": "tirth@example.com",
-  "password": "securepass",
-  "role": "buyer"
-}
-```
-
-```json
-{
-  "success": true,
-  "data": {
-    "id": 1,
-    "name": "Tirth Patel",
-    "email": "tirth@example.com",
-    "role": "buyer"
-  }
-}
-```
-
----
-
-### Example: Place Order
-
-**POST** `/orders` — `Authorization: Bearer <token>`
-
-```json
-{
-  "items": [
-    { "product_id": 1, "quantity": 2 },
-    { "product_id": 3, "quantity": 1 }
-  ]
-}
-```
-
-```json
-{
-  "success": true,
-  "message": "Order created successfully",
-  "data": { "orderId": 101 }
-}
-```
-
----
-
-### Example: Get Orders with Filters
-
-**GET** `/orders?status=pending&page=1&limit=10` — `Authorization: Bearer <token>`
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": 101,
-      "status": "pending",
-      "total_amount": "120000.00",
-      "buyer_name": "Tirth Patel",
-      "created_at": "2026-03-10T08:00:00.000Z"
-    }
-  ]
-}
-```
+- POST `/orders` (transactional)
+- GET `/orders`
+- GET `/orders/:id`
+- PATCH `/orders/:id/status`
 
 ---
 
 ## Key Engineering Decisions
 
-**Why SQL transactions for order creation?**  
-Order creation touches three tables — `orders`, `order_items`, and `products` (stock update). If any step fails, all changes must be rolled back. Without a transaction, a partial failure would leave the database in an inconsistent state.
-
-**Why `SELECT FOR UPDATE`?**  
-When checking product stock before placing an order, there is a window between the read and the write where another concurrent transaction can read the same stock value and both proceed. `SELECT FOR UPDATE` locks the row at read time, forcing concurrent transactions to wait until the first completes.
-
-**Why store `price_at_time` in `order_items`?**  
-Product prices change over time. If order history referenced the current product price, all historical orders would show incorrect values after a price update. Storing the price at the moment of purchase preserves accurate records.
-
-**Why separate `orders` and `order_items` tables?**  
-A single order can contain multiple products. Storing multiple product references in one row violates first normal form and makes querying and aggregation significantly harder. Splitting into two tables correctly models the one-to-many relationship.
+- Transactions ensure atomic operations across multiple tables  
+- `SELECT FOR UPDATE` prevents race conditions during stock updates  
+- `price_at_time` preserves historical pricing  
+- Separate `orders` and `order_items` for proper relational modeling  
 
 ---
 
 ## Concurrency Handling
 
-Consider two buyers simultaneously attempting to purchase the last unit of a product:
+Without locking:
+- Multiple users read same stock → overselling
 
-**Without locking:**
-
-1. Buyer A reads `stock = 1` — proceeds
-2. Buyer B reads `stock = 1` — proceeds
-3. Both orders succeed — `stock = -1` ❌
-
-**With `SELECT FOR UPDATE`:**
-
-1. Buyer A acquires row lock, reads `stock = 1` — proceeds
-2. Buyer B waits for the lock to be released
-3. Buyer A commits — `stock = 0`
-4. Buyer B acquires lock, reads `stock = 0` — order rejected with correct error ✅
+With locking:
+- Row is locked → second request waits → correct stock maintained
 
 ---
 
 ## Security
 
-- Passwords hashed with **bcrypt** (salt rounds: 10)
-- JWT tokens expire after **24 hours**
-- Role enforcement on every protected route via middleware
-- Global rate limiting — 100 requests per 15 minutes per IP
-- Sensitive credentials managed via environment variables only
-- HTTP security headers via **Helmet**
-- `.env` excluded from version control
+- bcrypt password hashing  
+- JWT authentication  
+- Rate limiting (100 req / 15 min)  
+- Helmet security headers  
+- Environment variable protection  
+
+---
+
+## Limitations & Future Improvements
+
+- Single-instance deployment (no horizontal scaling yet)
+- Can add Redis caching for performance
+- Can introduce job queues for async processing
+- Can scale with load balancers and distributed systems
 
 ---
 
 ## Deployment
 
-| Resource           | Platform                                                                                 |
-| ------------------ | ---------------------------------------------------------------------------------------- |
-| API Server         | Render                                                                                   |
-| Database           | AWS RDS (PostgreSQL)                                                                     |
-| Container Registry | Docker Hub                                                                               |
-| Live URL           | [order-management-api-ruqo.onrender.com](https://order-management-api-ruqo.onrender.com) |
+- API: Render  
+- DB: AWS RDS / Render DB  
+- Docker: Docker Hub  
 
 ---
 
 ## Author
 
-**Tirth Patel** — Backend Developer
+**Tirth Patel**
 
-[![GitHub](https://img.shields.io/badge/GitHub-TirthWillLearn-181717?style=flat-square&logo=github)](https://github.com/TirthWillLearn)
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-tirth--k--patel-0A66C2?style=flat-square&logo=linkedin)](https://www.linkedin.com/in/tirth-k-patel/)
-[![Portfolio](https://img.shields.io/badge/Portfolio-tirthdev.in-111111?style=flat-square&logo=firefox)](https://tirthdev.in)
+GitHub: https://github.com/TirthWillLearn  
+LinkedIn: https://www.linkedin.com/in/tirth-k-patel/  
+Portfolio: https://tirthdev.in
