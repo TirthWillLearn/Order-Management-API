@@ -72,7 +72,19 @@ Designed to handle real-world edge cases like concurrent purchases of limited st
 
 ## Architecture
 
-High-level system design showing API flow and transaction handling.
+High-level backend architecture illustrating how requests are processed through the system and how transactional operations ensure data consistency.
+
+The system follows a layered structure:
+
+- **Client (API / Postman)** sends HTTP requests
+- **Express server** handles routing, middleware, and request lifecycle
+- **Controllers & Services** manage business logic and coordinate operations
+- **PostgreSQL database** ensures data integrity using transactions and row-level locking
+
+Key focus:
+- Transaction-safe operations across multiple tables
+- Concurrency control using `SELECT FOR UPDATE`
+- Consistent state management during concurrent requests
 
 ![Architecture](./docs/architecture.png)
 
